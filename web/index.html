@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 图片超分辨率增强</title>
+<style>
+:root{color-scheme:light;--bg:#f3f6fb;--card:#fff;--text:#172033;--muted:#64748b;--line:#dbe2ea;--blue:#2563eb;--green:#15803d;--red:#b91c1c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"Microsoft YaHei",sans-serif}
+.wrap{max-width:1100px;margin:30px auto;padding:0 16px}
+h1{margin:0 0 8px;font-size:clamp(25px,4vw,34px)}
+.muted{color:var(--muted);line-height:1.65}
+.layout{display:grid;grid-template-columns:310px minmax(0,1fr);gap:18px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 5px 18px #0f172a08}
+label{display:block;font-weight:650;margin:14px 0 7px}
+input[type=file],select{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:white;color:var(--text)}
+.check{display:flex;align-items:center;gap:8px;margin-top:16px}.check label{margin:0}
+input[type=range]{width:100%;accent-color:var(--blue)}
+button,.download{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:9px;padding:12px 15px;font-weight:700;cursor:pointer;text-decoration:none;transition:background .2s,opacity .2s}
+button{width:100%;margin-top:18px;background:var(--blue);color:white}
+button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(80%)}
+.download{margin-top:12px;background:#e8efff;color:#1d4ed8}
+.small{font-size:13px;color:var(--muted);line-height:1.5}
+#status{margin-top:12px;overflow-wrap:anywhere;line-height:1.5}
+.status-box{border:1px solid var(--line);background:#f8fafc;border-radius:10px;padding:12px;margin-top:14px}
+.status-line{display:flex;align-items:center;gap:8px;font-weight:700}
+.dot{width:9px;height:9px;border-radius:50%;background:#94a3b8;flex:0 0 auto}
+.dot.busy{background:#2563eb;animation:pulse 1.2s infinite}
+.dot.success{background:var(--green)}.dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.progress{height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-top:11px}
+.progress-fill{height:100%;width:0;background:var(--blue);border-radius:99px;transition:width .25s ease}
+.progress-fill.indeterminate{width:35%;animation:slide 1.4s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(-110%)}100%{transform:translateX(310%)}}
+.progress-caption{display:flex;justify-content:space-between;gap:8px;margin-top:7px}
+.result-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.result-head h2{margin:0}
+.compare-tools{display:flex;align-items:center;gap:10px;margin:16px 0 10px}.compare-tools label{margin:0;white-space:nowrap}.compare-tools input{flex:1;min-width:70px}
+.compare{position:relative;width:100%;height:min(62vh,600px);min-height:300px;border:1px dashed #cbd5e1;border-radius:12px;overflow:hidden;background:linear-gradient(45deg,#f1f5f9 25%,transparent 25%,transparent 75%,#f1f5f9 75%),linear-gradient(45deg,#f1f5f9 25%,white 25%,white 75%,#f1f5f9 75%);background-size:20px 20px;background-position:0 0,10px 10px;display:flex;align-items:center;justify-content:center}
+.compare .placeholder{padding:24px;text-align:center;color:var(--muted)}
+.compare img{display:block;max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none}
+.compare .layer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.compare .enhanced-layer{clip-path:inset(0 50% 0 0)}
+.compare .enhanced-layer img{max-width:none;max-height:none;position:absolute;object-fit:contain}
+.compare .base-img{position:absolute;max-width:100%;max-height:100%;object-fit:contain}
+.compare .divider-line{position:absolute;top:0;bottom:0;left:50%;width:3px;background:white;box-shadow:0 0 0 1px #0f172a55;transform:translateX(-50%);pointer-events:none}
+.compare .handle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:42px;height:42px;border-radius:50%;background:white;color:#1e293b;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px #0f172a45;font-weight:900;pointer-events:none}
+.tag{position:absolute;top:12px;z-index:3;padding:6px 10px;border-radius:7px;background:#0f172acc;color:white;font-size:13px;font-weight:700;pointer-events:none}.tag.left{left:12px}.tag.right{right:12px}
+.result-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px}
+.btn-cancel{background:var(--red);margin-top:10px}
+.btn-restart{background:#6b7280;margin-top:10px}
+.file-list{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.file-row{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px}
+.file-row .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-row.done{cursor:pointer}
+.file-row.done:hover{border-color:var(--blue)}
+.badge{flex:0 0 auto;padding:3px 8px;border-radius:99px;font-size:12px;font-weight:700;background:#e2e8f0;color:#475569}
+.badge.running{background:#dbeafe;color:#1d4ed8}
+.badge.completed{background:#dcfce7;color:#15803d}
+.badge.error{background:#fee2e2;color:#b91c1c}
+.badge.cancelled{background:#f1f5f9;color:#64748b}
+.row-download{flex:0 0 auto;color:#1d4ed8;font-weight:700;text-decoration:none}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.wrap{margin-top:18px}.compare{height:55vh;min-height:260px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>AI 图片超分辨率增强</h1>
+  <p class="muted">基于 Real-ESRGAN 与 SCUNet。上传图片并选择参数，完成后可拖动对比条查看增强前后的差异。</p>
+  <div class="layout">
+    <section class="card">
+      <form id="form">
+        <label for="file">选择图片（可按住 Ctrl 多选）</label>
+        <input id="file" type="file" accept="image/png,image/jpeg,image/webp,image/bmp" multiple required>
+        <label for="style">模型风格</label>
+        <select id="style"><option value="realistic">写实风格</option><option value="anime">动漫风格</option></select>
+        <label for="scale">超分倍率</label>
+        <select id="scale"><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option><option value="16">16×（耗时较长）</option></select>
+        <div class="check"><input id="denoise" type="checkbox"><label for="denoise">启用 SCUNet 降噪</label></div>
+        <label for="strength">降噪强度：<span id="strengthValue">5</span></label>
+        <input id="strength" type="range" min="1" max="10" value="5">
+        <p class="small">建议先使用 4× 测试。16× 处理耗时和显存占用更高。</p>
+        <button id="submit" type="submit">开始增强</button>
+        <button id="cancelBtn" class="btn-cancel" type="button" disabled>中断处理</button>
+        <button id="restartBtn" class="btn-restart" type="button">重启引擎</button>
+      </form>
+      <div id="fileList" class="file-list"></div>
+      <div class="status-box" aria-live="polite">
+        <div class="status-line"><span id="statusDot" class="dot"></span><span id="statusTitle">等待操作</span></div>
+        <div id="status">请选择图片并点击“开始增强”。</div>
+        <div id="progress" class="progress" hidden><div id="progressFill" class="progress-fill"></div></div>
+        <div class="progress-caption small"><span id="progressCaption">尚未开始</span><span id="elapsed"></span></div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="result-head"><h2>增强前后对比</h2><span class="small" id="compareHint">完成增强后可拖动对比线</span></div>
+      <div class="compare" id="compare"><div class="placeholder" id="placeholder">选择图片并点击“开始增强”<br>处理完成后将显示原图与增强图对比</div></div>
+      <div class="compare-tools"><label for="position">对比位置</label><input id="position" type="range" min="0" max="100" value="50" disabled><span id="positionValue" class="small">50%</span></div>
+      <div class="result-meta"><span class="small" id="dimensions"></span><a id="download" class="download" hidden>下载增强图片</a></div>
+    </section>
+  </div>
+</main>
+<script>
+const form=document.querySelector('#form'), statusEl=document.querySelector('#status'), statusTitle=document.querySelector('#statusTitle'), statusDot=document.querySelector('#statusDot');
+const btn=document.querySelector('#submit'),fileInput=document.querySelector('#file'),compare=document.querySelector('#compare'),position=document.querySelector('#position'),positionValue=document.querySelector('#positionValue'),download=document.querySelector('#download'),strength=document.querySelector('#strength'),dimensions=document.querySelector('#dimensions');
+const progress=document.querySelector('#progress'),progressFill=document.querySelector('#progressFill'),progressCaption=document.querySelector('#progressCaption'),elapsedEl=document.querySelector('#elapsed');
+const cancelBtn=document.querySelector('#cancelBtn'),restartBtn=document.querySelector('#restartBtn');
+let originalObjectUrl=null,enhancedUrl=null,originalImage=null,enhancedImage=null,runStartedAt=0,elapsedTimer=null,currentTaskId=null,pollTimer=null,currentAbort=null,batchItems=null;
+strength.addEventListener('input',()=>document.querySelector('#strengthValue').textContent=strength.value);
+const fileList=document.querySelector('#fileList');
+fileInput.addEventListener('change',()=>{
+ const files=Array.from(fileInput.files);if(!files.length)return;
+ if(files.length>1){
+  if(originalObjectUrl)URL.revokeObjectURL(originalObjectUrl);originalObjectUrl=null;
+  if(batchItems)batchItems.forEach(it=>it.objectUrl&&URL.revokeObjectURL(it.objectUrl));
+  batchItems=files.map(f=>({file:f,objectUrl:URL.createObjectURL(f),state:'pending',taskId:null}));
+  renderBatchRows();
+  const totalMB=(files.reduce((s,f)=>s+f.size,0)/1024/1024).toFixed(1);
+  setStatus('ready','已选择 '+files.length+' 张图片',`共选择 ${files.length} 张图片（合计 ${totalMB} MB）。点击“开始增强”后将按顺序逐张处理。`);
+  dimensions.textContent=`已选择 ${files.length} 张图片，合计 ${totalMB} MB`;
+ }else{
+  if(batchItems)batchItems.forEach(it=>it.objectUrl&&URL.revokeObjectURL(it.objectUrl));
+  batchItems=null;fileList.innerHTML='';
+  if(originalObjectUrl)URL.revokeObjectURL(originalObjectUrl);originalObjectUrl=URL.createObjectURL(files[0]);
+  setStatus('ready','已选择图片',`文件：${files[0].name}（${(files[0].size/1024).toFixed(1)} KB）。准备好后点击“开始增强”。`);
+  dimensions.textContent=`原图文件大小：${(files[0].size/1024).toFixed(1)} KB`;
+ }
+});
+function setStatus(kind,title,message){
+ statusTitle.textContent=title;statusEl.textContent=message;statusDot.className='dot'+(kind==='busy'?' busy':kind==='success'?' success':kind==='error'?' error':'');
+}
+function startElapsed(){
+ runStartedAt=Date.now();elapsedEl.textContent='已用时 0 秒';
+ clearInterval(elapsedTimer);
+ elapsedTimer=setInterval(()=>{elapsedEl.textContent='已用时 '+Math.floor((Date.now()-runStartedAt)/1000)+' 秒'},1000);
+}
+function stopElapsed(){clearInterval(elapsedTimer);elapsedTimer=null;if(runStartedAt)elapsedEl.textContent='总用时 '+((Date.now()-runStartedAt)/1000).toFixed(1)+' 秒'}
+function setProgress(mode,label){
+ progress.hidden=false;progressCaption.textContent=label;
+ if(mode==='indeterminate'){progressFill.classList.add('indeterminate');progressFill.style.width='35%'}
+ else{progressFill.classList.remove('indeterminate');progressFill.style.width=mode+'%'}
+}
+function setBusyUi(){
+ btn.disabled=true;btn.textContent='正在处理…';fileInput.disabled=true;
+ cancelBtn.disabled=false;restartBtn.disabled=true;
+}
+function setIdleUi(){
+ btn.disabled=false;btn.textContent='开始增强';fileInput.disabled=false;
+ cancelBtn.disabled=true;restartBtn.disabled=false;
+}
+function stopPolling(){if(pollTimer){clearTimeout(pollTimer);pollTimer=null}}
+function startPolling(taskId){
+ stopPolling();
+ const poll=async()=>{
+  try{
+   const r=await fetch('/api/task/'+taskId);
+   const data=await r.json();
+   if(data.state==='completed'){
+    stopPolling();stopElapsed();setIdleUi();
+    if(data.result_url){
+     if(enhancedUrl)URL.revokeObjectURL(enhancedUrl);
+     enhancedUrl=data.result_url+'?t='+Date.now();
+     showComparison(originalObjectUrl,enhancedUrl,data.scale||document.querySelector('#scale').value);
+     download.href=data.result_url;download.download=data.filename||'enhanced.png';download.hidden=false;
+     setProgress(100,'处理完成');
+     setStatus('success','增强完成',`已完成 ${data.style==='anime'?'动漫':'写实'}风格 ${data.scale}× 增强。现在可以拖动对比线查看效果，或下载增强图片。`);
+    }else{
+     progress.hidden=true;
+     setStatus('error','处理异常','任务完成但未返回结果。');
+    }
+    currentTaskId=null;
+   }else if(data.state==='error'){
+    stopPolling();stopElapsed();setIdleUi();progress.hidden=true;
+    setStatus('error','处理失败',data.error||'发生未知错误。');
+    currentTaskId=null;
+   }else if(data.state==='cancelled'){
+    stopPolling();stopElapsed();setIdleUi();progress.hidden=true;
+    setStatus('error','已取消','处理已被用户中断。');
+    currentTaskId=null;
+   }else{
+    setProgress('indeterminate','模型推理中');
+    pollTimer=setTimeout(poll,1500);
+   }
+  }catch(e){
+   pollTimer=setTimeout(poll,3000);
+  }
+ };
+ pollTimer=setTimeout(poll,1500);
+}
+function renderBatchRows(){
+ fileList.innerHTML='';
+ batchItems.forEach(it=>{
+  const row=document.createElement('div');row.className='file-row';
+  const name=document.createElement('span');name.className='name';name.textContent=it.file.name+`（${(it.file.size/1024).toFixed(1)} KB）`;
+  const badge=document.createElement('span');badge.className='badge';badge.textContent='等待中';
+  row.append(name,badge);it.row=row;it.badge=badge;
+  row.addEventListener('click',ev=>{
+   if(ev.target.closest('a'))return;
+   if(it.state==='completed'&&it.resultUrl){
+    showComparison(it.objectUrl,it.resultUrl+'?t='+Date.now(),document.querySelector('#scale').value);
+    setStatus('ready','查看对比',`正在显示「${it.file.name}」的增强前后对比，可拖动对比线查看效果。`);
+   }
+  });
+  fileList.append(row);updateBatchRow(it);
+ });
+}
+const BATCH_LABELS={pending:'排队中',running:'处理中',completed:'已完成',error:'失败',cancelled:'已取消'};
+function updateBatchRow(it){
+ if(!it.row)return;
+ const cls=it.state==='pending'||!BATCH_LABELS[it.state]?'':it.state;
+ it.badge.className='badge'+(cls?' '+cls:'');
+ it.badge.textContent=BATCH_LABELS[it.state]||'等待中';
+ it.row.classList.toggle('done',it.state==='completed');
+ if(it.state==='error'&&it.error)it.row.title=it.error;
+ if(it.state==='completed'&&it.resultUrl&&!it.row.querySelector('a')){
+  const a=document.createElement('a');a.className='row-download';a.href=it.resultUrl;a.download=it.resultFilename||'enhanced.png';a.textContent='下载';
+  it.row.append(a);
+ }
+}
+function batchTerminal(it){return['completed','error','cancelled'].includes(it.state)}
+async function submitBatch(files){
+ setBusyUi();progress.hidden=false;setProgress('indeterminate',`正在上传 ${files.length} 张图片`);
+ setStatus('busy','正在处理图片',`正在上传 ${files.length} 张图片并等待模型推理，将按顺序逐张处理。`);startElapsed();
+ download.hidden=true;position.disabled=true;dimensions.textContent='';
+ try{
+  const ctrl=new AbortController();
+  const timeoutId=setTimeout(()=>ctrl.abort(),180000);
+  const data=new FormData();files.forEach(f=>data.append('files',f));
+  data.append('style',document.querySelector('#style').value);data.append('scale',document.querySelector('#scale').value);
+  data.append('denoise',document.querySelector('#denoise').checked?'true':'false');data.append('denoise_strength',strength.value);
+  const r=await fetch('/api/enhance/batch',{method:'POST',body:data,signal:ctrl.signal});
+  clearTimeout(timeoutId);
+  let result;try{result=await r.json()}catch{throw new Error('服务器返回了无法识别的内容')}
+  if(!r.ok)throw new Error(result.detail||'请求失败');
+  result.tasks.forEach((t,i)=>{
+   const it=batchItems[i];if(!it)return;
+   it.taskId=t.task_id;
+   if(!t.task_id){it.state='error';it.error=t.error;updateBatchRow(it)}
+  });
+  if(!batchItems.some(it=>it.taskId))throw new Error('全部文件均无法处理');
+  startBatchPolling();
+ }catch(err){
+  stopElapsed();setIdleUi();progress.hidden=true;
+  if(err.name==='AbortError')setStatus('error','上传超时','批量上传超时，请减少图片数量后重试。');
+  else setStatus('error','提交失败',err.message||'发生未知错误。请检查服务端终端输出。');
+ }
+}
+function startBatchPolling(){
+ stopPolling();
+ const poll=async()=>{
+  const active=batchItems.filter(it=>it.taskId&&!batchTerminal(it));
+  if(!active.length)return finishBatch();
+  try{
+   const responses=await Promise.all(active.map(it=>fetch('/api/task/'+it.taskId).then(r=>r.json()).then(d=>({it,d})).catch(()=>({it,d:null}))));
+   responses.forEach(({it,d})=>{
+    if(!d)return;
+    it.state=d.state;
+    if(d.state==='completed'){it.resultUrl=d.result_url;it.resultFilename=d.filename}
+    if(d.state==='error')it.error=d.error;
+    updateBatchRow(it);
+   });
+   const total=batchItems.length,done=batchItems.filter(batchTerminal).length;
+   setProgress(Math.round(done/total*100),`已完成 ${done}/${total}`);
+   if(done===total)return finishBatch();
+  }catch(e){}
+  pollTimer=setTimeout(poll,1500);
+ };
+ pollTimer=setTimeout(poll,1500);
+}
+function finishBatch(){
+ stopPolling();stopElapsed();setIdleUi();
+ const ok=batchItems.filter(it=>it.state==='completed').length;
+ const fail=batchItems.filter(it=>it.state==='error'||it.state==='cancelled').length;
+ if(ok)setStatus('success','批量处理完成',`共 ${batchItems.length} 张：成功 ${ok} 张${fail?`，失败/取消 ${fail} 张`:''}。点击列表中“已完成”的条目可查看对比，或逐张下载。`);
+ else setStatus('error','批量处理失败',`全部 ${batchItems.length} 张图片均失败或被取消。`);
+}
+function fitOverlayImages(){
+ if(!originalImage||!enhancedImage)return;
+ const box=compare.getBoundingClientRect(),ratio=Math.min(box.width/originalImage.naturalWidth,box.height/originalImage.naturalHeight),w=originalImage.naturalWidth*ratio,h=originalImage.naturalHeight*ratio;
+ [originalImage,enhancedImage].forEach(img=>{img.style.width=w+'px';img.style.height=h+'px';img.style.maxWidth='none';img.style.maxHeight='none';img.style.left='50%';img.style.top='50%';img.style.transform='translate(-50%,-50%)'});
+ updatePosition();
+}
+function updatePosition(){
+ const p=Number(position.value);positionValue.textContent=p+'%';
+ const layer=document.querySelector('#enhancedLayer'),line=document.querySelector('#dividerLine'),handle=document.querySelector('#handle');
+ if(layer)layer.style.clipPath=`inset(0 ${100-p}% 0 0)`;if(line)line.style.left=p+'%';if(handle)handle.style.left=p+'%';
+}
+position.addEventListener('input',updatePosition);window.addEventListener('resize',()=>{if(originalImage&&enhancedImage)fitOverlayImages()});
+function showComparison(originalSrc,resultSrc,scale){
+ compare.innerHTML='';
+ const leftTag=document.createElement('span');leftTag.className='tag left';leftTag.textContent='增强图';
+ const rightTag=document.createElement('span');rightTag.className='tag right';rightTag.textContent='原图';
+ const base=document.createElement('img');base.className='base-img';base.alt='原图';base.src=originalSrc;
+ const layer=document.createElement('div');layer.className='layer enhanced-layer';layer.id='enhancedLayer';
+ const enhanced=document.createElement('img');enhanced.alt='增强图';enhanced.src=resultSrc;
+ const line=document.createElement('div');line.className='divider-line';line.id='dividerLine';
+ const handle=document.createElement('div');handle.className='handle';handle.id='handle';handle.textContent='↔';
+ compare.append(base,layer,line,handle,leftTag,rightTag);originalImage=base;enhancedImage=enhanced;layer.appendChild(enhanced);position.disabled=false;
+ const ready=()=>{if(base.complete&&enhanced.complete&&base.naturalWidth&&enhanced.naturalWidth){fitOverlayImages();dimensions.textContent=`原图 ${base.naturalWidth} × ${base.naturalHeight} px · 增强图 ${enhanced.naturalWidth} × ${enhanced.naturalHeight} px · ${scale}×`}};
+ base.onload=ready;enhanced.onload=ready;if(base.complete&&enhanced.complete)ready();updatePosition();
+}
+form.addEventListener('submit',async e=>{
+ e.preventDefault();const files=Array.from(fileInput.files);if(!files.length){setStatus('error','缺少图片','请先选择要增强的图片。');return}
+ if(files.length>1)return submitBatch(files);
+ const file=files[0];
+ if(originalObjectUrl)URL.revokeObjectURL(originalObjectUrl);originalObjectUrl=URL.createObjectURL(file);
+ const data=new FormData();data.append('file',file);data.append('style',document.querySelector('#style').value);data.append('scale',document.querySelector('#scale').value);data.append('denoise',document.querySelector('#denoise').checked?'true':'false');data.append('denoise_strength',strength.value);
+ setBusyUi();progress.hidden=false;setProgress('indeterminate','正在上传图片');setStatus('busy','正在处理图片','正在上传图片并等待模型推理。处理时间取决于图片尺寸、超分倍率和显卡性能。');startElapsed();
+ download.hidden=true;position.disabled=true;dimensions.textContent='';
+ try{
+  const ctrl=new AbortController();
+  const timeoutId=setTimeout(()=>ctrl.abort(),60000);
+  const r=await fetch('/api/enhance',{method:'POST',body:data,signal:ctrl.signal});let result;
+  clearTimeout(timeoutId);
+  try{result=await r.json()}catch{throw new Error('服务器返回了无法识别的内容')}
+  if(!r.ok)throw new Error(result.detail||'请求失败');
+  currentTaskId=result.task_id;
+  startPolling(result.task_id);
+ }catch(err){
+  stopElapsed();setIdleUi();progress.hidden=true;
+  if(err.name==='AbortError'){setStatus('error','请求超时','服务器响应超时，请检查引擎状态或重启后重试。')}
+  else{setStatus('error','处理失败',err.message||'发生未知错误。请检查服务端终端输出。')}
+ }
+});
+cancelBtn.addEventListener('click',async()=>{
+ cancelBtn.disabled=true;
+ setStatus('busy','正在取消…','正在发送取消信号，请等待当前推理步骤结束。');
+ try{
+  await fetch('/api/cancel',{method:'POST'});
+ }catch(e){}
+ stopPolling();stopElapsed();setIdleUi();progress.hidden=true;
+ if(batchItems)batchItems.forEach(it=>{if(!batchTerminal(it)){it.state='cancelled';updateBatchRow(it)}});
+ setStatus('error','已取消','处理已被中断。');
+ currentTaskId=null;
+});
+restartBtn.addEventListener('click',async()=>{
+ restartBtn.disabled=true;
+ setStatus('busy','正在重启…','正在重启 AI 引擎，释放显存并重新加载模型。');
+ try{
+  const ctrl=new AbortController();
+  const timeoutId=setTimeout(()=>ctrl.abort(),120000);
+  const r=await fetch('/api/restart',{method:'POST',signal:ctrl.signal});
+  clearTimeout(timeoutId);
+  const data=await r.json();
+  if(r.ok){
+   setStatus('success','重启完成','AI 引擎已成功重启，显存已释放，模型已重新加载。');
+  }else{
+   throw new Error(data.detail||'重启失败');
+  }
+ }catch(e){
+  if(e.name==='AbortError')setStatus('error','重启超时','引擎初始化超时，请检查 GPU 状态或重启服务。');
+  else setStatus('error','重启失败',e.message||'请检查服务端状态。');
+ }
+ restartBtn.disabled=false;
+});
+</script>
+</body>
+</html>
