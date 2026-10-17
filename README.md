@@ -1,1 +1,1 @@
-模型文件太大无法上传，需要自行下载RealESRGAN_x4plus.pth，RealESRGAN_x4plus_anime_6B.pth，scunet_color_real_psnr.pth这三个模型
+模型文件太大无法上传，需要自行下载RealESRGAN_x4plus.pth，RealESRGAN_x4plus_anime_6B.pth，scunet_color_real_psnr.pth这三个模型并放入新建weighs文件夹，将三个模型放入
