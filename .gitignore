@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.eggs/
+
+# IDE
+.idea/
+.vscode/
+
+# PyInstaller 打包产物
+build/
+dist/
+output/
+
+# 模型权重（单个超过 GitHub 100MB 限制，不入库）
+weights/
+*.pth
+
+# 运行时输入输出（临时文件与生成结果）
+uploads/
+web_outputs/
+results/
+input/
+
+# 上游第三方库源码（体积大，按需另行获取）
+Real-ESRGAN-master/
